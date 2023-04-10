@@ -30,11 +30,17 @@ class Environment:
 
         # self.hpc_p = hpc_p.values
 
-        self.mask = np.zeros( (config.AGENTS, config.FEATURE_DIM), dtype=np.float32 )
-        self.x    = np.zeros( (config.AGENTS, config.FEATURE_DIM), dtype=np.float32 )
-        self.y    = np.zeros( config.AGENTS, dtype=np.int64 )
-        self.p    = np.zeros( config.AGENTS, dtype=np.int32 )
-        self.n    = np.zeros( (config.AGENTS, config.FEATURE_DIM), dtype=np.bool )
+        # self.mask = np.zeros( (config.AGENTS, config.FEATURE_DIM), dtype=np.float32 )
+        # self.x    = np.zeros( (config.AGENTS, config.FEATURE_DIM), dtype=np.float32 )
+        # self.y    = np.zeros( config.AGENTS, dtype=np.int64 )
+        # self.p    = np.zeros( config.AGENTS, dtype=np.int32 )
+        # self.n    = np.zeros( (config.AGENTS, config.FEATURE_DIM), dtype=np.bool )
+
+        self.mask = np.zeros( ( config.FEATURE_DIM), dtype=np.float32 )
+        self.x    = np.zeros( ( config.FEATURE_DIM), dtype=np.float32 )
+        self.y    = np.zeros(  dtype=np.int64 )
+        self.p    = np.zeros(  dtype=np.int32 )
+        self.n    = np.zeros( ( config.FEATURE_DIM), dtype=np.bool )
 
     def reset(self):
         for i in range(config.AGENTS):
@@ -50,8 +56,8 @@ class Environment:
         self.x[i], self.y[i], self.n[i] = self._generate_sample()
 
     def step(self, action):
-        done = np.zeros(config.AGENTS, dtype=np.int8)
-        corr = np.zeros(config.AGENTS, dtype=np.int8)
+        # done = np.zeros(config.AGENTS, dtype=np.int8)
+        # corr = np.zeros(config.AGENTS, dtype=np.int8)
         # hpc  = np.zeros(config.AGENTS, dtype=np.bool)
         # hpc_fc = np.zeros(config.AGENTS, dtype=np.float32)
         eplen = np.sum(self.mask, axis=1) + 1 # episode length
@@ -59,25 +65,33 @@ class Environment:
 
         action_f = np.clip(action - config.TERMINAL_ACTIONS, 0, config.FEATURE_DIM)
 
-        self.mask[lin_array, action_f] = 1
+        # self.mask[lin_array, action_f] = 1
+        self.mask[action_f] = 1
+
         rewards = -self.costs[action_f] * config.FEATURE_FACTOR
+        done = False
 
-        for i in np.where(action < config.TERMINAL_ACTIONS)[0]:
-            # if config.USE_HPC and action[i] == config.HPC_ACTION:
-            #     remaining_actions = (1 - self.n[i]) * (1 - mask_[i])
-            #     r_feat = - np.sum( remaining_actions * self.costs ) * config.FEATURE_FACTOR              # total cost of remaining actions
-            #     r_corr = config.REWARD_CORRECT if self.p[i] == self.y[i] else config.REWARD_INCORRECT
+        if action < config.TERMINAL_ACTIONS:
+            rewards = config.REWARD_CORRECT if action == self.y else config.REWARD_INCORRECT
+            done =True
+            self._reset()
 
-            #     hpc[i] = 1
-            #     hpc_fc[i] = r_feat
-            #     corr[i] = 1 if self.p[i] == self.y[i] else 0
-            #     r[i] = r_feat + r_corr
-            # else:
-            corr[i] = 1 if action[i] == self.y[i] else 0
-            rewards[i] = config.REWARD_CORRECT if action[i] == self.y[i] else config.REWARD_INCORRECT
+        # for i in np.where(action < config.TERMINAL_ACTIONS)[0]:
+        #     # if config.USE_HPC and action[i] == config.HPC_ACTION:
+        #     #     remaining_actions = (1 - self.n[i]) * (1 - mask_[i])
+        #     #     r_feat = - np.sum( remaining_actions * self.costs ) * config.FEATURE_FACTOR              # total cost of remaining actions
+        #     #     r_corr = config.REWARD_CORRECT if self.p[i] == self.y[i] else config.REWARD_INCORRECT
 
-            done[i] = True
-            self._reset(i)
+        #     #     hpc[i] = 1
+        #     #     hpc_fc[i] = r_feat
+        #     #     corr[i] = 1 if self.p[i] == self.y[i] else 0
+        #     #     r[i] = r_feat + r_corr
+        #     # else:
+        #     corr[i] = 1 if action[i] == self.y[i] else 0
+        #     rewards[i] = config.REWARD_CORRECT if action[i] == self.y[i] else config.REWARD_INCORRECT
+
+        #     done[i] = True
+        #     self._reset(i)
 
         s_ = self._get_state(self.x, self.mask)
         info = {'corr':corr, 'eplen':eplen}
@@ -146,7 +160,8 @@ class Environment:
 class SeqEnvironment(Environment):
     def reset(self):
         self.idx = 0
-        return super().reset()
+        return super().reset()[0]
+        # state (1000,2,784), action (1000,794)
 
     def _generate_sample(self):
         if self.idx >= self.data_len:
@@ -175,7 +190,11 @@ class SeqEnvironment(Environment):
         # info['hpc'][terminated] = 0
         # info['hpc_fc'][terminated] = 0
 
-        return (next_state_, reward, unavl_actions, done, info)
+        # return (next_state_, reward, unavl_actions, done, info)
+        # return (next_state_, reward, unavl_actions, done, info)
+        return (next_state_, reward, done, info)
+
+
 
 
 
